@@ -1,5 +1,6 @@
 package com.tutoring_calendar.models;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -19,8 +20,8 @@ public class Event {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    @OneToOne
-    @JoinColumn(name = "client_id")
+    @ManyToOne
+    @JoinColumn(name = "client_id", nullable = false)
     private Client client;
     @Column(name = "price")
     private Integer price;
