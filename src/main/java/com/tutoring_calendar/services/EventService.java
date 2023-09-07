@@ -6,6 +6,7 @@ import com.tutoring_calendar.repositories.ClientRepository;
 import com.tutoring_calendar.repositories.EventRepository;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -29,7 +30,30 @@ public class EventService {
         newEvent.setClient(client);
 
         Event savedEvent = eventRepository.save(newEvent);
+
+        if(newEvent.isRepeatable()){
+            repeatEventEveryWeek(newEvent, client);
+        }
         return Optional.of(savedEvent);
+    }
+
+    private void repeatEventEveryWeek(Event newEvent, Client client) {
+        LocalDate startDate = newEvent.getDate().plusWeeks(1); // Initial start date
+        LocalDate endDate = startDate.plusWeeks(5); // Calculate end date
+
+        while (startDate.isBefore(endDate)) {
+            Event repeatableEvent = new Event();
+            repeatableEvent.setClient(client);
+            repeatableEvent.setPrice(newEvent.getPrice());
+            repeatableEvent.setStartTime(newEvent.getStartTime());
+            repeatableEvent.setFinishTime(newEvent.getFinishTime());
+            repeatableEvent.setRepeatable(true);
+            repeatableEvent.setDate(startDate);
+
+            eventRepository.save(repeatableEvent);
+
+            startDate = startDate.plusWeeks(1);
+        }
     }
 
     public List<Event> getAllEvents(){
