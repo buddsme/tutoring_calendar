@@ -6,8 +6,10 @@ import com.tutoring_calendar.repositories.ClientRepository;
 import com.tutoring_calendar.repositories.EventRepository;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.List;
 import java.util.Optional;
 
@@ -72,6 +74,58 @@ public class EventService {
 
         LocalDate endOfTheWeek = startOfTheWeek.plusDays(6);
 
-        return eventRepository.findAllByWeekRange(startOfTheWeek, endOfTheWeek);
+        return eventRepository.findAllByDateRange(startOfTheWeek, endOfTheWeek);
+    }
+
+    public BigDecimal calculateCurrentIncomeForWeek(List<Event> weekEvents) {
+
+        BigDecimal income = BigDecimal.valueOf(0);
+
+        for(Event event : weekEvents){
+            if(event.getDate().isBefore(LocalDate.now())){
+                income = income.add(event.getPrice());
+            }
+        }
+        return income;
+    }
+
+    public BigDecimal calculateExpectedIncomeForWeek(List<Event> weekEvents) {
+        BigDecimal income = BigDecimal.valueOf(0);
+
+        for(Event event : weekEvents){
+            income = income.add(event.getPrice());
+        }
+        return income;
+    }
+
+    public BigDecimal calculateCurrentIncomeForMonth(LocalDate date) {
+        LocalDate firstDateOfMonth = date.withDayOfMonth(1);
+
+        YearMonth yearMonth = YearMonth.from(date);
+        LocalDate lastDateOfMonth = yearMonth.atEndOfMonth();
+        List<Event> monthEvents = eventRepository.findAllByDateRange(firstDateOfMonth, lastDateOfMonth);
+
+        BigDecimal income = BigDecimal.valueOf(0);
+        for(Event event : monthEvents){
+            if(event.getDate().isBefore(LocalDate.now())){
+                income = income.add(event.getPrice());
+            }
+        }
+        return income;
+    }
+
+    public BigDecimal calculateExpectedIncomeForMonth(LocalDate date) {
+        LocalDate firstDateOfMonth = date.withDayOfMonth(1);
+
+        YearMonth yearMonth = YearMonth.from(date);
+        LocalDate lastDateOfMonth = yearMonth.atEndOfMonth();
+        List<Event> monthEvents = eventRepository.findAllByDateRange(firstDateOfMonth, lastDateOfMonth);
+
+        BigDecimal income = BigDecimal.valueOf(0);
+        for(Event event : monthEvents){
+            income = income.add(event.getPrice());
+        }
+        return income;
+
     }
 }

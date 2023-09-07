@@ -5,7 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.List;
+import java.math.BigDecimal;
 
 @Entity
 @Table(name = "clients")
@@ -22,7 +22,7 @@ public class Client {
     private String fullName;
 
     @Column(name = "deposit")
-    private Integer deposit;
+    private BigDecimal deposit;
 
     @Column(name = "services")
     private Integer services;

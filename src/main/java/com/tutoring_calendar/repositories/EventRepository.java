@@ -10,7 +10,6 @@ import java.util.List;
 
 public interface EventRepository extends JpaRepository<Event, Long> {
 
-
-    @Query("SELECT e FROM Event e WHERE e.date BETWEEN :startOfTheWeek AND :endOfTheWeek")
-    List<Event> findAllByWeekRange(@Param("startOfTheWeek")LocalDate startOfTheWeek, @Param("endOfTheWeek")LocalDate endOfTheWeek);
+    @Query("SELECT e FROM Event e WHERE e.date BETWEEN :startDate AND :endDate")
+    List<Event> findAllByDateRange(@Param("startDate")LocalDate startDate, @Param("endDate")LocalDate endDate);
 }

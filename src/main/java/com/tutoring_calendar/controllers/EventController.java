@@ -1,11 +1,13 @@
 package com.tutoring_calendar.controllers;
 
+import com.tutoring_calendar.dto.EventResponse;
 import com.tutoring_calendar.models.Event;
 import com.tutoring_calendar.services.EventService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
+import java.math.BigDecimal;
 import java.net.URI;
 import java.time.LocalDate;
 import java.util.List;
@@ -30,12 +32,19 @@ public class EventController {
     }
 
     @GetMapping("/events/{date}")
-    public ResponseEntity<List<Event>> getEventsByWeek(@PathVariable LocalDate date){
+    public ResponseEntity<EventResponse> getEventsByWeek(@PathVariable LocalDate date){
         List<Event> weekEvents = eventService.getEventsForCurrentWeek(date);
+        BigDecimal currentWeekIncome = eventService.calculateCurrentIncomeForWeek(weekEvents);
+        BigDecimal expectedWeekIncome = eventService.calculateExpectedIncomeForWeek(weekEvents);
+        BigDecimal currentMonthIncome = eventService.calculateCurrentIncomeForMonth(date);
+        BigDecimal expectedMonthIncome = eventService.calculateExpectedIncomeForMonth(date);
+
+        EventResponse eventResponse = new EventResponse(weekEvents, currentWeekIncome, expectedWeekIncome, currentMonthIncome, expectedMonthIncome);
+
         if(weekEvents.isEmpty()){
             return ResponseEntity.noContent().build();
         }
-        return ResponseEntity.ok(weekEvents);
+        return ResponseEntity.ok(eventResponse);
     }
 
     @PostMapping("/create-event")
