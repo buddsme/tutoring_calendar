@@ -1,5 +1,6 @@
 package com.tutoring_calendar.services;
 
+import com.tutoring_calendar.enums.EventStatus;
 import com.tutoring_calendar.models.Client;
 import com.tutoring_calendar.models.Event;
 import com.tutoring_calendar.repositories.ClientRepository;
@@ -28,9 +29,15 @@ public class EventService {
         String clientFullName = newEvent.getClient().getFullName();
         Optional<Client> existingClient = clientRepository.findByFullName(clientFullName);
 
-        Client client = existingClient.orElseGet(() -> clientRepository.save(newEvent.getClient()));
+        Client client = existingClient.orElseGet(() -> {
+            Client newClient = newEvent.getClient();
+            newClient.setServices(0);
+            newClient.setDeposit(BigDecimal.valueOf(0));
+            return clientRepository.save(newClient);
+        });
 
         newEvent.setClient(client);
+        newEvent.setEventStatus(EventStatus.CREATED);
 
         Event savedEvent = eventRepository.save(newEvent);
 
@@ -52,6 +59,7 @@ public class EventService {
             repeatableEvent.setFinishTime(newEvent.getFinishTime());
             repeatableEvent.setRepeatable(true);
             repeatableEvent.setDate(startDate);
+            repeatableEvent.setEventStatus(EventStatus.CREATED);
 
             eventRepository.save(repeatableEvent);
 
@@ -79,7 +87,7 @@ public class EventService {
 
     public BigDecimal calculateCurrentIncomeForWeek(List<Event> weekEvents) {
 
-        BigDecimal income = BigDecimal.valueOf(0);
+        BigDecimal income = new BigDecimal("0");
 
         for(Event event : weekEvents){
             if(event.getDate().isBefore(LocalDate.now())){
@@ -90,7 +98,7 @@ public class EventService {
     }
 
     public BigDecimal calculateExpectedIncomeForWeek(List<Event> weekEvents) {
-        BigDecimal income = BigDecimal.valueOf(0);
+        BigDecimal income = new BigDecimal("0");
 
         for(Event event : weekEvents){
             income = income.add(event.getPrice());
@@ -105,7 +113,7 @@ public class EventService {
         LocalDate lastDateOfMonth = yearMonth.atEndOfMonth();
         List<Event> monthEvents = eventRepository.findAllByDateRange(firstDateOfMonth, lastDateOfMonth);
 
-        BigDecimal income = BigDecimal.valueOf(0);
+        BigDecimal income = new BigDecimal("0");
         for(Event event : monthEvents){
             if(event.getDate().isBefore(LocalDate.now())){
                 income = income.add(event.getPrice());
@@ -121,7 +129,7 @@ public class EventService {
         LocalDate lastDateOfMonth = yearMonth.atEndOfMonth();
         List<Event> monthEvents = eventRepository.findAllByDateRange(firstDateOfMonth, lastDateOfMonth);
 
-        BigDecimal income = BigDecimal.valueOf(0);
+        BigDecimal income = new BigDecimal("0");
         for(Event event : monthEvents){
             income = income.add(event.getPrice());
         }

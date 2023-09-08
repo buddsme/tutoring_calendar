@@ -1,5 +1,6 @@
 package com.tutoring_calendar.models;
 
+import com.tutoring_calendar.enums.EventStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -32,4 +33,7 @@ public class Event {
     private LocalTime finishTime;
     @Column(name = "repeatable")
     private boolean repeatable;
+
+    @Column(name = "status")
+    private EventStatus eventStatus;
 }
