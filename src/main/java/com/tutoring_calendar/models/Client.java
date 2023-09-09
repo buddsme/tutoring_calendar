@@ -1,5 +1,6 @@
 package com.tutoring_calendar.models;
 
+import com.tutoring_calendar.enums.ClientStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -13,7 +14,6 @@ import java.math.BigDecimal;
 @NoArgsConstructor
 @Data
 public class Client {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -24,6 +24,6 @@ public class Client {
     @Column(name = "deposit")
     private BigDecimal deposit;
 
-    @Column(name = "services")
-    private Integer services;
+    @Column(name = "status")
+    private ClientStatus clientStatus;
 }

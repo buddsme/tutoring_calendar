@@ -31,7 +31,6 @@ public class EventService {
 
         Client client = existingClient.orElseGet(() -> {
             Client newClient = newEvent.getClient();
-            newClient.setServices(0);
             newClient.setDeposit(BigDecimal.valueOf(0));
             return clientRepository.save(newClient);
         });

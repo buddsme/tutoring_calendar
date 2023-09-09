@@ -1,5 +1,6 @@
 package com.tutoring_calendar.services;
 
+import com.tutoring_calendar.enums.ClientStatus;
 import com.tutoring_calendar.enums.EventStatus;
 import com.tutoring_calendar.models.Client;
 import com.tutoring_calendar.models.Event;
@@ -30,35 +31,46 @@ public class ClientService {
         return clientRepository
                 .findAll()
                 .stream()
+                .filter(client -> client.getClientStatus().equals(ClientStatus.ACTIVE))
                 .sorted(Comparator.comparing(Client::getFullName))
                 .collect(Collectors.toList());
     }
 
 
     @Scheduled(cron = "0 1 * * * *")
-    public void proceedCompletedServices() {
-        List<Client> clients = getAllClients();
+    public void proceedCompletedEvents() {
+        List<Client> clients = clientRepository.findAll();
         for (Client client : clients) {
-            List<Event> clientEvents = eventRepository.findAllByClient(client);
-            for (Event event : clientEvents) {
-                LocalDateTime eventFinishDateTime = event.getDate().atTime(event.getFinishTime());
-                if (eventFinishDateTime.isBefore(LocalDateTime.now()) && event.getEventStatus().equals(EventStatus.CREATED)) {
-                    client.setDeposit(client.getDeposit().subtract(event.getPrice()));
-                    client.setServices(client.getServices() - 1);
-                    event.setEventStatus(EventStatus.FINISHED);
-                    eventRepository.save(event);
-                    clientRepository.save(client);
-                }
+            processClientEvents(client);
+        }
+    }
+
+    private void processClientEvents(Client client) {
+        List<Event> clientEvents = eventRepository.findAllByClient(client);
+        LocalDateTime currentDateTime = LocalDateTime.now();
+
+        for (Event event : clientEvents) {
+            LocalDateTime eventFinishDateTime = event.getDate().atTime(event.getFinishTime());
+
+            if (eventFinishDateTime.isBefore(currentDateTime) && event.getEventStatus().equals(EventStatus.CREATED)) {
+                updateClientAndEvent(client, event);
             }
         }
     }
 
+    private void updateClientAndEvent(Client client, Event event) {
+        client.setDeposit(client.getDeposit().subtract(event.getPrice()));
+        event.setEventStatus(EventStatus.FINISHED);
+        eventRepository.save(event);
+        clientRepository.save(client);
+    }
+
     public BigDecimal countNotPaidIncome(List<Client> clients) {
-        BigDecimal notPaidIncome = BigDecimal.valueOf(0);
-        for(Client client : clients){
+        BigDecimal notPaidIncome = new BigDecimal("0");
+        for (Client client : clients) {
             BigDecimal clientCurrentDeposit = client.getDeposit();
 
-            if(clientCurrentDeposit.compareTo(BigDecimal.valueOf(0)) < 0){
+            if (clientCurrentDeposit != null && clientCurrentDeposit.compareTo(BigDecimal.valueOf(0)) < 0) {
                 notPaidIncome = notPaidIncome.add(clientCurrentDeposit);
             }
         }
@@ -66,30 +78,40 @@ public class ClientService {
     }
 
     public BigDecimal countPaidForwardIncome(List<Client> clients) {
-        BigDecimal paidForwardIncome = BigDecimal.valueOf(0);
-        for(Client client : clients){
+        BigDecimal paidForwardIncome = new BigDecimal("0");
+        for (Client client : clients) {
             BigDecimal clientCurrentDeposit = client.getDeposit();
 
-            if(clientCurrentDeposit.compareTo(BigDecimal.valueOf(0)) > 0){
+            if (clientCurrentDeposit != null && clientCurrentDeposit.compareTo(BigDecimal.valueOf(0)) > 0) {
                 paidForwardIncome = paidForwardIncome.add(clientCurrentDeposit);
             }
         }
         return paidForwardIncome;
     }
 
-    public Optional<Client> getClientById(Long clientId) {
-        if(clientId > 0){
-            return clientRepository.findById(clientId);
+    public boolean updateDeposit(Long clientId, BigDecimal newDepositAmount) {
+        if (clientId != null && clientRepository.existsById(clientId)) {
+            Optional<Client> clientOptional = clientRepository.findById(clientId);
+
+            return clientOptional.map(client -> {
+                client.setDeposit(newDepositAmount);
+                clientRepository.save(client);
+                return true;
+            }).orElse(false);
         }
-        return Optional.empty();
+        return false;
     }
 
-//    public void updateDepositAndServices(Client client, BigDecimal newDepositAmount) {
-//        client.setDeposit(newDepositAmount);
-//        Integer services = 0;
-//        if(newDepositAmount.compareTo(BigDecimal.valueOf(0)) > 0){
-//            services =
-//        }
-//        clientRepository.save(client);
-//    }
+    public boolean archiveClient(Long clientId) {
+        if (clientId != null && clientRepository.existsById(clientId)) {
+            Optional<Client> clientOptional = clientRepository.findById(clientId);
+
+            return clientOptional.map(client -> {
+                client.setClientStatus(ClientStatus.ARCHIVED);
+                clientRepository.save(client);
+                return true;
+            }).orElse(false);
+        }
+        return false;
+    }
 }

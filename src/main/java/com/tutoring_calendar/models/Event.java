@@ -16,21 +16,26 @@ import java.time.LocalTime;
 @NoArgsConstructor
 @Data
 public class Event {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    @ManyToOne
+
+    @ManyToOne()
     @JoinColumn(name = "client_id", nullable = false)
     private Client client;
+
     @Column(name = "price")
     private BigDecimal price;
+
     @Column(name = "date")
     private LocalDate date;
+
     @Column(name = "start_time")
     private LocalTime startTime;
+
     @Column(name = "finish_time")
     private LocalTime finishTime;
+
     @Column(name = "repeatable")
     private boolean repeatable;
 

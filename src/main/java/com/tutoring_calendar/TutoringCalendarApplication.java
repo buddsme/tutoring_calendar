@@ -11,4 +11,16 @@ public class TutoringCalendarApplication {
     public static void main(String[] args) {
         SpringApplication.run(TutoringCalendarApplication.class, args);
     }
+
+//    @Bean
+//    public WebMvcConfigurer corsConfigurer() {
+//		return new WebMvcConfigurer() {
+//			@Override
+//			public void addCorsMappings(CorsRegistry registry) {
+//                registry.addMapping("/events/{date}").allowedOrigins("http://localhost:63342");
+//                registry.addMapping("/create-event").allowedOrigins("http://localhost:63342");
+//			}
+//		};
+//    }
+
 }

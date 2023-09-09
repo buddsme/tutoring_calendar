@@ -12,6 +12,8 @@ import java.util.Objects;
 import java.util.Optional;
 
 @RestController
+@RequestMapping("/clients")
+@CrossOrigin("*")
 public class ClientController {
 
     private final ClientService clientService;
@@ -20,7 +22,7 @@ public class ClientController {
         this.clientService = clientService;
     }
 
-    @GetMapping("/clients")
+    @GetMapping("")
     public ResponseEntity<ClientResponse> getAllClients(){
         List<Client> clients = clientService.getAllClients();
         BigDecimal notPaid = clientService.countNotPaidIncome(clients);
@@ -34,18 +36,23 @@ public class ClientController {
         return ResponseEntity.ok(clientResponse);
     }
 
-//    @PostMapping("/clients/change-deposit")
-//    public ResponseEntity<Object> changeClientDeposit(@RequestParam Long clientId, @RequestParam BigDecimal newDepositAmount){
-//        Optional<Client> client = clientService.getClientById(clientId);
-//
-//        return client.map(c->{
-//            clientService.updateDepositAndServices(c, newDepositAmount);
-//
-//            return ResponseEntity.noContent().build();
-//        }).orElse(ResponseEntity.ok().build());
-//    }
+    @PutMapping("/change-deposit")
+    public ResponseEntity<Object> changeClientDeposit(@RequestParam Long clientId, @RequestParam BigDecimal newDepositAmount){
 
+        boolean updated = clientService.updateDeposit(clientId, newDepositAmount);
+        if(!updated){
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.noContent().build();
+    }
 
-
+    @PutMapping("/archive")
+    public ResponseEntity<Object> archiveClient(@RequestParam Long clientId){
+        boolean deleted = clientService.archiveClient(clientId);
+        if(!deleted){
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.noContent().build();
+    }
 
 }
