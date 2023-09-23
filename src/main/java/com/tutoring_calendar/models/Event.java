@@ -41,4 +41,20 @@ public class Event {
 
     @Column(name = "status")
     private EventStatus eventStatus;
+
+    @Column(name = "original_id")
+    private Long originalId;
+
+    //Copy constructor
+    public Event(Event otherEvent) {
+        this.id = otherEvent.id;
+        this.client = otherEvent.client;
+        this.price = otherEvent.price;
+        this.date = otherEvent.date;
+        this.startTime = otherEvent.startTime;
+        this.finishTime = otherEvent.finishTime;
+        this.repeatable = otherEvent.repeatable;
+        this.eventStatus = otherEvent.eventStatus;
+    }
+
 }

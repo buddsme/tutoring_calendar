@@ -34,7 +34,7 @@ public class EventController {
 
     @GetMapping("/events/{date}")
     public ResponseEntity<EventResponse> getEventsByWeek(@PathVariable LocalDate date){
-        List<Event> weekEvents = eventService.getEventsForCurrentWeek(date);
+        List<Event> weekEvents = eventService.getEventsForSelectedWeek(date);
         BigDecimal currentWeekIncome = eventService.calculateCurrentIncomeForWeek(weekEvents);
         BigDecimal expectedWeekIncome = eventService.calculateExpectedIncomeForWeek(weekEvents);
         BigDecimal currentMonthIncome = eventService.calculateCurrentIncomeForMonth(date);
@@ -51,10 +51,10 @@ public class EventController {
     @PostMapping("/create-event")
     public ResponseEntity<Object> createNewEvent(@RequestBody Event newEvent){
 
-        Optional<Event> event = eventService.addEvent(newEvent);
+        Optional<Event> createdEvent = eventService.addEvent(newEvent);
 
-        return event.map(e -> {
-            Long id = e.getId();
+        return createdEvent.map(event -> {
+            Long id = event.getId();
             URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                     .path("/{id}")
                     .buildAndExpand(id)

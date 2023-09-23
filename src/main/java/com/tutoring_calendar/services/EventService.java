@@ -1,15 +1,18 @@
 package com.tutoring_calendar.services;
 
+import com.tutoring_calendar.enums.ClientStatus;
 import com.tutoring_calendar.enums.EventStatus;
 import com.tutoring_calendar.models.Client;
 import com.tutoring_calendar.models.Event;
 import com.tutoring_calendar.repositories.ClientRepository;
 import com.tutoring_calendar.repositories.EventRepository;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.util.List;
 import java.util.Optional;
@@ -25,71 +28,16 @@ public class EventService {
         this.clientRepository = clientRepository;
     }
 
-    public Optional<Event> addEvent(Event newEvent) {
-        String clientFullName = newEvent.getClient().getFullName();
-        Optional<Client> existingClient = clientRepository.findByFullName(clientFullName);
-
-        Client client = existingClient.orElseGet(() -> {
-            Client newClient = newEvent.getClient();
-            newClient.setDeposit(BigDecimal.valueOf(0));
-            return clientRepository.save(newClient);
-        });
-
-        newEvent.setClient(client);
-        newEvent.setEventStatus(EventStatus.CREATED);
-
-        Event savedEvent = eventRepository.save(newEvent);
-
-        if(newEvent.isRepeatable()){
-            repeatEventEveryWeek(newEvent, client);
-        }
-        return Optional.of(savedEvent);
-    }
-
-    private void repeatEventEveryWeek(Event newEvent, Client client) {
-        LocalDate startDate = newEvent.getDate().plusWeeks(1); // Initial start date
-        LocalDate endDate = startDate.plusWeeks(5); // Calculate end date
-
-        while (startDate.isBefore(endDate)) {
-            Event repeatableEvent = new Event();
-            repeatableEvent.setClient(client);
-            repeatableEvent.setPrice(newEvent.getPrice());
-            repeatableEvent.setStartTime(newEvent.getStartTime());
-            repeatableEvent.setFinishTime(newEvent.getFinishTime());
-            repeatableEvent.setRepeatable(true);
-            repeatableEvent.setDate(startDate);
-            repeatableEvent.setEventStatus(EventStatus.CREATED);
-
-            eventRepository.save(repeatableEvent);
-
-            startDate = startDate.plusWeeks(1);
-        }
-    }
-
-    public List<Event> getAllEvents(){
+    public List<Event> getAllEvents() {
         return eventRepository.findAll();
-    }
-
-    public List<Event> getEventsForCurrentWeek(LocalDate date) {
-        DayOfWeek dayOfWeek = date.getDayOfWeek();
-
-        LocalDate startOfTheWeek = date;
-
-        if(dayOfWeek.getValue() > 1){
-            startOfTheWeek = date.minusDays(dayOfWeek.getValue() - 1);
-        }
-
-        LocalDate endOfTheWeek = startOfTheWeek.plusDays(6);
-
-        return eventRepository.findAllByDateRange(startOfTheWeek, endOfTheWeek);
     }
 
     public BigDecimal calculateCurrentIncomeForWeek(List<Event> weekEvents) {
 
         BigDecimal income = new BigDecimal("0");
 
-        for(Event event : weekEvents){
-            if(event.getDate().isBefore(LocalDate.now())){
+        for (Event event : weekEvents) {
+            if (event.getDate().isBefore(LocalDate.now())) {
                 income = income.add(event.getPrice());
             }
         }
@@ -99,7 +47,7 @@ public class EventService {
     public BigDecimal calculateExpectedIncomeForWeek(List<Event> weekEvents) {
         BigDecimal income = new BigDecimal("0");
 
-        for(Event event : weekEvents){
+        for (Event event : weekEvents) {
             income = income.add(event.getPrice());
         }
         return income;
@@ -113,8 +61,8 @@ public class EventService {
         List<Event> monthEvents = eventRepository.findAllByDateRange(firstDateOfMonth, lastDateOfMonth);
 
         BigDecimal income = new BigDecimal("0");
-        for(Event event : monthEvents){
-            if(event.getDate().isBefore(LocalDate.now())){
+        for (Event event : monthEvents) {
+            if (event.getDate().isBefore(LocalDate.now())) {
                 income = income.add(event.getPrice());
             }
         }
@@ -129,10 +77,118 @@ public class EventService {
         List<Event> monthEvents = eventRepository.findAllByDateRange(firstDateOfMonth, lastDateOfMonth);
 
         BigDecimal income = new BigDecimal("0");
-        for(Event event : monthEvents){
+        for (Event event : monthEvents) {
             income = income.add(event.getPrice());
         }
         return income;
 
+    }
+
+    @Scheduled(cron = "0 1 * * * *")
+    public void proceedCompletedEvents() {
+        List<Client> clients = clientRepository.findAll();
+        for (Client client : clients) {
+            processClientEvents(client);
+        }
+    }
+
+    private void processClientEvents(Client client) {
+        List<Event> clientEvents = eventRepository.findAllByClient(client);
+        LocalDateTime currentDateTime = LocalDateTime.now();
+
+        for (Event event : clientEvents) {
+            LocalDateTime eventFinishDateTime = event.getDate().atTime(event.getFinishTime());
+
+            if (eventFinishDateTime.isBefore(currentDateTime) && event.getEventStatus().equals(EventStatus.CREATED)) {
+                updateClientAndEvent(client, event);
+            }
+        }
+    }
+
+    private void updateClientAndEvent(Client client, Event event) {
+        client.setDeposit(client.getDeposit().subtract(event.getPrice()));
+        event.setEventStatus(EventStatus.FINISHED);
+        eventRepository.save(event);
+        clientRepository.save(client);
+    }
+
+
+    public Optional<Event> addEvent(Event newEvent) {
+
+        String clientFullName = newEvent.getClient().getFullName();
+        Optional<Client> existingClient = clientRepository.findByFullName(clientFullName);
+
+        Client client = existingClient.orElseGet(() -> {
+            Client newClient = newEvent.getClient();
+            newClient.setClientStatus(ClientStatus.ACTIVE);
+            newClient.setDeposit(BigDecimal.valueOf(0));
+            return clientRepository.save(newClient);
+        });
+
+        newEvent.setClient(client);
+        newEvent.setEventStatus(EventStatus.CREATED);
+
+        Event event = eventRepository.save(newEvent);
+        if (newEvent.getOriginalId() > 0) {
+            eventRepository.save(event);
+        } else {
+            Long originalEventId = event.getId();
+            event.setOriginalId(originalEventId);
+            eventRepository.save(event);
+        }
+
+        return Optional.of(event);
+    }
+
+    public Optional<Event> updateEventData(Event newEventData) {
+        Optional<Event> eventFromDB = eventRepository.findById(newEventData.getId());
+
+        eventFromDB.ifPresent(event -> {
+            event.setDate(newEventData.getDate());
+            event.setRepeatable(newEventData.isRepeatable());
+            event.setPrice(newEventData.getPrice());
+            event.setClient(newEventData.getClient());
+            event.setStartTime(newEventData.getStartTime());
+            event.setFinishTime(newEventData.getFinishTime());
+            event.setOriginalId(newEventData.getOriginalId());
+            event.setEventStatus(EventStatus.UPDATED);
+            eventRepository.save(event);
+        });
+
+        return eventFromDB;
+    }
+
+    public List<Event> getEventsForSelectedWeek(LocalDate dateOfWeek) {
+
+        LocalDate firstDayOfSearchedWeek = dateOfWeek.with(DayOfWeek.MONDAY);
+        LocalDate lastDayOfSearchedWeek = dateOfWeek.with(DayOfWeek.SUNDAY);
+
+        createRecurringEventForSelectedWeek(dateOfWeek, firstDayOfSearchedWeek, lastDayOfSearchedWeek);
+
+        return eventRepository.findAllByDateRange(firstDayOfSearchedWeek, lastDayOfSearchedWeek);
+    }
+
+    private void createRecurringEventForSelectedWeek(LocalDate dateOfSearchedWeek, LocalDate firstDayOfSearchedWeek, LocalDate lastDayOfSearchedWeek) {
+        List<Event> originalEvents = eventRepository.findAllOriginalEvents();
+        for (Event event : originalEvents) {
+            boolean isDateInRange = dateOfSearchedWeek.isAfter(firstDayOfSearchedWeek) && dateOfSearchedWeek.isBefore(lastDayOfSearchedWeek);
+
+            if (event.isRepeatable() && dateOfSearchedWeek.isAfter(event.getDate()) && !isDateInRange) {
+                Optional<Event> recurringEvent = eventRepository.findRecurringEventOfSelectedWeek(event.getId(), firstDayOfSearchedWeek, lastDayOfSearchedWeek);
+
+                if (recurringEvent.isEmpty()) {
+                    DayOfWeek dayOfEvent = event.getDate().getDayOfWeek();
+                    LocalDate newDateOfEvent = firstDayOfSearchedWeek.with(dayOfEvent);
+
+                    Event newRecurrentEvent = new Event(event);
+                    newRecurrentEvent.setId(-1L);
+                    newRecurrentEvent.setDate(newDateOfEvent);
+                    newRecurrentEvent.setOriginalId(event.getId());
+                    newRecurrentEvent.setEventStatus(EventStatus.CREATED);
+                    newRecurrentEvent.setRepeatable(false);
+                    addEvent(newRecurrentEvent);
+                }
+            }
+        }
     }
 }

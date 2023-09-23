@@ -37,33 +37,7 @@ public class ClientService {
     }
 
 
-    @Scheduled(cron = "0 1 * * * *")
-    public void proceedCompletedEvents() {
-        List<Client> clients = clientRepository.findAll();
-        for (Client client : clients) {
-            processClientEvents(client);
-        }
-    }
 
-    private void processClientEvents(Client client) {
-        List<Event> clientEvents = eventRepository.findAllByClient(client);
-        LocalDateTime currentDateTime = LocalDateTime.now();
-
-        for (Event event : clientEvents) {
-            LocalDateTime eventFinishDateTime = event.getDate().atTime(event.getFinishTime());
-
-            if (eventFinishDateTime.isBefore(currentDateTime) && event.getEventStatus().equals(EventStatus.CREATED)) {
-                updateClientAndEvent(client, event);
-            }
-        }
-    }
-
-    private void updateClientAndEvent(Client client, Event event) {
-        client.setDeposit(client.getDeposit().subtract(event.getPrice()));
-        event.setEventStatus(EventStatus.FINISHED);
-        eventRepository.save(event);
-        clientRepository.save(client);
-    }
 
     public BigDecimal countNotPaidIncome(List<Client> clients) {
         BigDecimal notPaidIncome = new BigDecimal("0");
@@ -108,10 +82,21 @@ public class ClientService {
 
             return clientOptional.map(client -> {
                 client.setClientStatus(ClientStatus.ARCHIVED);
+                stopRepeatClientServices(client);
                 clientRepository.save(client);
                 return true;
             }).orElse(false);
         }
         return false;
+    }
+
+    private void stopRepeatClientServices(Client client) {
+        List<Event> clientEvents = eventRepository.findAllByClient(client);
+        for(Event event : clientEvents){
+            if(event.isRepeatable()){
+                event.setRepeatable(false);
+                eventRepository.save(event);
+            }
+        }
     }
 }
