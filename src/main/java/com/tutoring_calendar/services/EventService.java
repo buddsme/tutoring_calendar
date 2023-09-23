@@ -114,24 +114,13 @@ public class EventService {
 
 
     public Optional<Event> addEvent(Event newEvent) {
-
-        String clientFullName = newEvent.getClient().getFullName();
-        Optional<Client> existingClient = clientRepository.findByFullName(clientFullName);
-
-        Client client = existingClient.orElseGet(() -> {
-            Client newClient = newEvent.getClient();
-            newClient.setClientStatus(ClientStatus.ACTIVE);
-            newClient.setDeposit(BigDecimal.valueOf(0));
-            return clientRepository.save(newClient);
-        });
-
+        Client client = getOrCreateClient(newEvent.getClient());
         newEvent.setClient(client);
         newEvent.setEventStatus(EventStatus.CREATED);
 
         Event event = eventRepository.save(newEvent);
-        if (newEvent.getOriginalId() > 0) {
-            eventRepository.save(event);
-        } else {
+
+        if (newEvent.getOriginalId() <= 0) {
             Long originalEventId = event.getId();
             event.setOriginalId(originalEventId);
             eventRepository.save(event);
@@ -140,22 +129,35 @@ public class EventService {
         return Optional.of(event);
     }
 
-    public Optional<Event> updateEventData(Event newEventData) {
-        Optional<Event> eventFromDB = eventRepository.findById(newEventData.getId());
+    private Client getOrCreateClient(Client client) {
+        String clientFullName = client.getFullName();
+        return clientRepository.findByFullName(clientFullName).orElseGet(() -> {
+            client.setClientStatus(ClientStatus.ACTIVE);
+            client.setDeposit(BigDecimal.valueOf(0));
+            return clientRepository.save(client);
+        });
+    }
 
-        eventFromDB.ifPresent(event -> {
-            event.setDate(newEventData.getDate());
-            event.setRepeatable(newEventData.isRepeatable());
-            event.setPrice(newEventData.getPrice());
-            event.setClient(newEventData.getClient());
-            event.setStartTime(newEventData.getStartTime());
-            event.setFinishTime(newEventData.getFinishTime());
-            event.setOriginalId(newEventData.getOriginalId());
+    public Optional<Event> updateEventData(Event updatedEventData) {
+        Optional<Event> eventOptional = eventRepository.findById(updatedEventData.getId());
+
+        eventOptional.ifPresent(event -> {
+            updateEventFields(event, updatedEventData);
             event.setEventStatus(EventStatus.UPDATED);
             eventRepository.save(event);
         });
 
-        return eventFromDB;
+        return eventOptional;
+    }
+
+    private void updateEventFields(Event event, Event updatedEvent) {
+        event.setDate(updatedEvent.getDate());
+        event.setRepeatable(updatedEvent.isRepeatable());
+        event.setPrice(updatedEvent.getPrice());
+        event.setClient(updatedEvent.getClient());
+        event.setStartTime(updatedEvent.getStartTime());
+        event.setFinishTime(updatedEvent.getFinishTime());
+        event.setOriginalId(updatedEvent.getOriginalId());
     }
 
     public List<Event> getEventsForSelectedWeek(LocalDate dateOfWeek) {
@@ -163,32 +165,50 @@ public class EventService {
         LocalDate firstDayOfSearchedWeek = dateOfWeek.with(DayOfWeek.MONDAY);
         LocalDate lastDayOfSearchedWeek = dateOfWeek.with(DayOfWeek.SUNDAY);
 
-        createRecurringEventForSelectedWeek(dateOfWeek, firstDayOfSearchedWeek, lastDayOfSearchedWeek);
+        createRecurringEventsForWeek(dateOfWeek, firstDayOfSearchedWeek, lastDayOfSearchedWeek);
 
         return eventRepository.findAllByDateRange(firstDayOfSearchedWeek, lastDayOfSearchedWeek);
     }
 
-    private void createRecurringEventForSelectedWeek(LocalDate dateOfSearchedWeek, LocalDate firstDayOfSearchedWeek, LocalDate lastDayOfSearchedWeek) {
+    private void createRecurringEventsForWeek(LocalDate targetDate, LocalDate startOfWeek, LocalDate endOfWeek) {
         List<Event> originalEvents = eventRepository.findAllOriginalEvents();
-        for (Event event : originalEvents) {
-            boolean isDateInRange = dateOfSearchedWeek.isAfter(firstDayOfSearchedWeek) && dateOfSearchedWeek.isBefore(lastDayOfSearchedWeek);
 
-            if (event.isRepeatable() && dateOfSearchedWeek.isAfter(event.getDate()) && !isDateInRange) {
-                Optional<Event> recurringEvent = eventRepository.findRecurringEventOfSelectedWeek(event.getId(), firstDayOfSearchedWeek, lastDayOfSearchedWeek);
+        for (Event event : originalEvents) {
+            if (eventShouldBeRecreated(event, targetDate, startOfWeek, endOfWeek)) {
+                Optional<Event> recurringEvent = eventRepository.findRecurringEventOfSelectedWeek(
+                        event.getId(), startOfWeek, endOfWeek);
 
                 if (recurringEvent.isEmpty()) {
-                    DayOfWeek dayOfEvent = event.getDate().getDayOfWeek();
-                    LocalDate newDateOfEvent = firstDayOfSearchedWeek.with(dayOfEvent);
+                    LocalDate newDateOfEvent = calculateNewEventDate(event.getDate(), startOfWeek);
 
-                    Event newRecurrentEvent = new Event(event);
-                    newRecurrentEvent.setId(-1L);
-                    newRecurrentEvent.setDate(newDateOfEvent);
-                    newRecurrentEvent.setOriginalId(event.getId());
-                    newRecurrentEvent.setEventStatus(EventStatus.CREATED);
-                    newRecurrentEvent.setRepeatable(false);
+                    Event newRecurrentEvent = createRecurrentEvent(event, newDateOfEvent);
                     addEvent(newRecurrentEvent);
                 }
             }
         }
+    }
+
+    private boolean eventShouldBeRecreated(Event event, LocalDate targetDate, LocalDate startOfWeek, LocalDate endOfWeek) {
+        LocalDate eventDate = event.getDate();
+        return event.isRepeatable() && eventDate.isBefore(targetDate) && !isDateInRange(targetDate, startOfWeek, endOfWeek);
+    }
+
+    private boolean isDateInRange(LocalDate date, LocalDate startOfWeek, LocalDate endOfWeek) {
+        return !date.isBefore(startOfWeek) && !date.isAfter(endOfWeek);
+    }
+
+    private LocalDate calculateNewEventDate(LocalDate originalDate, LocalDate startOfWeek) {
+        DayOfWeek dayOfEvent = originalDate.getDayOfWeek();
+        return startOfWeek.with(dayOfEvent);
+    }
+
+    private Event createRecurrentEvent(Event originalEvent, LocalDate newDate) {
+        Event newRecurrentEvent = new Event(originalEvent);
+        newRecurrentEvent.setId(-1L);
+        newRecurrentEvent.setDate(newDate);
+        newRecurrentEvent.setOriginalId(originalEvent.getId());
+        newRecurrentEvent.setEventStatus(EventStatus.CREATED);
+        newRecurrentEvent.setRepeatable(false);
+        return newRecurrentEvent;
     }
 }

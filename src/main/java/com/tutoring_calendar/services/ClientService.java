@@ -1,16 +1,13 @@
 package com.tutoring_calendar.services;
 
 import com.tutoring_calendar.enums.ClientStatus;
-import com.tutoring_calendar.enums.EventStatus;
 import com.tutoring_calendar.models.Client;
 import com.tutoring_calendar.models.Event;
 import com.tutoring_calendar.repositories.ClientRepository;
 import com.tutoring_calendar.repositories.EventRepository;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -77,17 +74,18 @@ public class ClientService {
     }
 
     public boolean archiveClient(Long clientId) {
-        if (clientId != null && clientRepository.existsById(clientId)) {
-            Optional<Client> clientOptional = clientRepository.findById(clientId);
-
-            return clientOptional.map(client -> {
-                client.setClientStatus(ClientStatus.ARCHIVED);
-                stopRepeatClientServices(client);
-                clientRepository.save(client);
-                return true;
-            }).orElse(false);
+        if (clientId == null || !clientRepository.existsById(clientId)) {
+            return false;
         }
-        return false;
+
+        Optional<Client> clientOptional = clientRepository.findById(clientId);
+        clientOptional.ifPresent(client -> {
+            client.setClientStatus(ClientStatus.ARCHIVED);
+            stopRepeatClientServices(client);
+            clientRepository.save(client);
+        });
+
+        return clientOptional.isPresent();
     }
 
     private void stopRepeatClientServices(Client client) {
