@@ -1,6 +1,7 @@
 package com.tutoring_calendar.controllers;
 
 import com.tutoring_calendar.dto.EventResponse;
+import com.tutoring_calendar.dto.EventUpdateDTO;
 import com.tutoring_calendar.models.Event;
 import com.tutoring_calendar.services.EventService;
 
@@ -63,21 +64,20 @@ public class EventController {
     }
 
     @PostMapping("/events/update")
-    public ResponseEntity<Object> updateEvent(@RequestBody Event newEvent){
+    public ResponseEntity<Object> updateEvent(@RequestBody EventUpdateDTO newEvent){
         log.info("Received request to update event. Event details: {}", newEvent);
 
-        Optional<Event> updatedEvent = eventService.updateEventData(newEvent);
+        Event updatedEvent = eventService.updateEventData(newEvent);
+        Long id = updatedEvent.getId();
 
-        return updatedEvent.map(event -> {
-            Long id = event.getId();
-            URI location = ServletUriComponentsBuilder.fromCurrentRequest()
-                    .path("/{id}")
-                    .buildAndExpand(id)
-                    .toUri();
-            log.info("Event updated successfully. Event ID: {}", id);
-            return ResponseEntity.created(location).build();
+        log.info("Event updated successfully. Event ID: {}", id);
 
-        }).orElse(ResponseEntity.noContent().build());
+        URI location = ServletUriComponentsBuilder.fromCurrentRequest()
+                .path("/{id}")
+                .buildAndExpand(id)
+                .toUri();
+
+        return ResponseEntity.created(location).build();
     }
 
     @PostMapping("/create-event")

@@ -1,11 +1,14 @@
 package com.tutoring_calendar.services;
 
+import com.tutoring_calendar.dto.EventUpdateDTO;
 import com.tutoring_calendar.enums.ClientStatus;
 import com.tutoring_calendar.enums.EventStatus;
+import com.tutoring_calendar.exceptions.EventNotFoundException;
 import com.tutoring_calendar.models.Client;
 import com.tutoring_calendar.models.Event;
 import com.tutoring_calendar.repositories.ClientRepository;
 import com.tutoring_calendar.repositories.EventRepository;
+import com.tutoring_calendar.services.mappers.EventMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -167,29 +170,19 @@ public class EventService {
         });
     }
 
-    public Optional<Event> updateEventData(Event updatedEventData) {
+    public Event updateEventData(EventUpdateDTO updatedEventData) {
         log.debug("Updating event data for event ID: {}", updatedEventData.getId());
 
         Optional<Event> eventOptional = eventRepository.findById(updatedEventData.getId());
 
-        eventOptional.ifPresent(event -> {
-            updateEventFields(event, updatedEventData);
-            event.setEventStatus(EventStatus.UPDATED);
-            eventRepository.save(event);
-        });
+        Event savedEvent = eventOptional.orElseThrow(() -> new EventNotFoundException("Event not found in database"));
+
+        savedEvent = EventMapper.INSTANCE.populateEventWithPresentEventUpdateDTOFields(savedEvent, updatedEventData);
+
+        Event updatedEvent = eventRepository.save(savedEvent);
 
         log.debug("Event data updated for event ID: {}", updatedEventData.getId());
-        return eventOptional;
-    }
-
-    private void updateEventFields(Event event, Event updatedEvent) {
-        event.setDate(updatedEvent.getDate());
-        event.setRepeatable(updatedEvent.isRepeatable());
-        event.setPrice(updatedEvent.getPrice());
-        event.setClient(updatedEvent.getClient());
-        event.setStartTime(updatedEvent.getStartTime());
-        event.setFinishTime(updatedEvent.getFinishTime());
-        event.setOriginalId(updatedEvent.getOriginalId());
+        return updatedEvent;
     }
 
     public List<Event> getEventsForSelectedWeek(LocalDate dateOfWeek) {
