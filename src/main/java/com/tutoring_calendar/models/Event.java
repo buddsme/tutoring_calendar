@@ -2,6 +2,7 @@ package com.tutoring_calendar.models;
 
 import com.tutoring_calendar.enums.EventStatus;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -22,18 +23,23 @@ public class Event {
 
     @ManyToOne()
     @JoinColumn(name = "client_id", nullable = false)
+    @NotNull(message = "Client is mandatory")
     private Client client;
 
     @Column(name = "price")
+    @NotNull(message = "Price is mandatory")
     private BigDecimal price;
 
     @Column(name = "date")
+    @NotNull(message = "Date date is mandatory")
     private LocalDate date;
 
     @Column(name = "start_time")
+    @NotNull(message = "Start time of event is mandatory")
     private LocalTime startTime;
 
     @Column(name = "finish_time")
+    @NotNull(message = "Finish time of event is mandatory")
     private LocalTime finishTime;
 
     @Column(name = "repeatable")

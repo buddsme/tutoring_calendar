@@ -65,12 +65,12 @@ public class EventController {
 
     @PostMapping("/events/update")
     public ResponseEntity<Object> updateEvent(@RequestBody EventUpdateDTO newEvent){
-        log.info("Received request to update event. Event details: {}", newEvent);
+        log.info("Received request to update event. Date details: {}", newEvent);
 
         Event updatedEvent = eventService.updateEventData(newEvent);
         Long id = updatedEvent.getId();
 
-        log.info("Event updated successfully. Event ID: {}", id);
+        log.info("Date updated successfully. Date ID: {}", id);
 
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}")
@@ -82,7 +82,7 @@ public class EventController {
 
     @PostMapping("/create-event")
     public ResponseEntity<Object> createNewEvent(@RequestBody Event newEvent){
-        log.info("Received request to create a new event. Event details: {}", newEvent);
+        log.info("Received request to create a new event. Date details: {}", newEvent);
 
         Optional<Event> createdEvent = eventService.addEvent(newEvent);
 
@@ -92,7 +92,7 @@ public class EventController {
                     .path("/{id}")
                     .buildAndExpand(id)
                     .toUri();
-            log.info("Event created successfully. Event ID: {}", id);
+            log.info("Date created successfully. Date ID: {}", id);
             return ResponseEntity.created(location).build();
         }).orElse(ResponseEntity.noContent().build());
     }

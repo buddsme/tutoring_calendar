@@ -11,7 +11,6 @@ import org.mapstruct.factory.Mappers;
 public interface EventMapper {
     EventMapper INSTANCE = Mappers.getMapper(EventMapper.class);
 
-
     Event populateEventWithPresentEventUpdateDTOFields(@MappingTarget Event event, EventUpdateDTO eventDTO);
 }
 

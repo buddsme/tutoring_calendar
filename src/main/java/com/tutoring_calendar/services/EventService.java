@@ -175,13 +175,13 @@ public class EventService {
 
         Optional<Event> eventOptional = eventRepository.findById(updatedEventData.getId());
 
-        Event savedEvent = eventOptional.orElseThrow(() -> new EventNotFoundException("Event not found in database"));
+        Event savedEvent = eventOptional.orElseThrow(() -> new EventNotFoundException("Date not found in database"));
 
         savedEvent = EventMapper.INSTANCE.populateEventWithPresentEventUpdateDTOFields(savedEvent, updatedEventData);
 
         Event updatedEvent = eventRepository.save(savedEvent);
 
-        log.debug("Event data updated for event ID: {}", updatedEventData.getId());
+        log.debug("Date data updated for event ID: {}", updatedEventData.getId());
         return updatedEvent;
     }
 
@@ -226,7 +226,7 @@ public class EventService {
         LocalDate eventDate = event.getDate();
         boolean shouldBeRecreated = event.isRepeatable() && eventDate.isBefore(targetDate) && !isDateInRange(targetDate, startOfWeek, endOfWeek);
 
-        log.debug("Event should{} be recreated for event ID: {}", shouldBeRecreated ? "" : " not", event.getId());
+        log.debug("Date should{} be recreated for event ID: {}", shouldBeRecreated ? "" : " not", event.getId());
         return shouldBeRecreated;
     }
 
