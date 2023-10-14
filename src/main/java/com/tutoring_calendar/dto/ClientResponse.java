@@ -10,7 +10,7 @@ import java.util.List;
 @Data
 @AllArgsConstructor
 public class ClientResponse {
-    private List<Client> events;
+    private List<Client> clients;
     private BigDecimal notPaid;
     private BigDecimal paidForward;
 }
