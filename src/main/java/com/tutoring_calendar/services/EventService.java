@@ -148,7 +148,7 @@ public class EventService {
 
         Event event = eventRepository.save(newEvent);
 
-        if (newEvent.getOriginalId() <= 0) {
+        if (newEvent.getOriginalId() == null || newEvent.getOriginalId() <= 0) {
             Long originalEventId = event.getId();
             event.setOriginalId(originalEventId);
             eventRepository.save(event);
