@@ -4,6 +4,7 @@ import com.tutoring_calendar.TutoringCalendarApplication;
 import com.tutoring_calendar.enums.ClientStatus;
 import com.tutoring_calendar.models.Client;
 import com.tutoring_calendar.repositories.ClientRepository;
+import com.tutoring_calendar.repositories.EventRepository;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
 import org.junit.runner.RunWith;
@@ -37,7 +38,8 @@ class ClientControllerTest {
     private MockMvc mvc;
     @Autowired
     private ClientRepository clientRepository;
-
+    @Autowired
+    private EventRepository eventRepository;
     @Test
     void givenClients_whenGetClients_thenStatus200() throws Exception {
         mvc.perform(get("/clients")
@@ -54,7 +56,7 @@ class ClientControllerTest {
     @Transactional
     @Rollback(value = true)
     void givenNoClients_whenGetClients_thenStatus204() throws Exception {
-
+        eventRepository.deleteAll();
         clientRepository.deleteAll();
 
         mvc.perform(get("/clients")

@@ -1,5 +1,6 @@
 package com.tutoring_calendar.services;
 
+import com.tutoring_calendar.dto.EventResponse;
 import com.tutoring_calendar.dto.EventUpdateDTO;
 import com.tutoring_calendar.enums.ClientStatus;
 import com.tutoring_calendar.enums.EventStatus;
@@ -170,22 +171,28 @@ public class EventService {
         });
     }
 
-    public Event updateEventData(EventUpdateDTO updatedEventData) {
+    public Optional<Event> updateEventData(EventUpdateDTO updatedEventData) {
+
+        if(updatedEventData.getId() == null){
+            return Optional.empty();
+        }
+
         log.debug("Updating event data for event ID: {}", updatedEventData.getId());
 
         Optional<Event> eventOptional = eventRepository.findById(updatedEventData.getId());
 
-        Event savedEvent = eventOptional.orElseThrow(() -> new EventNotFoundException("Date not found in database"));
+        Event savedEvent = eventOptional.orElseThrow(() -> new EventNotFoundException("Event not found in database"));
 
         savedEvent = EventMapper.INSTANCE.populateEventWithPresentEventUpdateDTOFields(savedEvent, updatedEventData);
 
         Event updatedEvent = eventRepository.save(savedEvent);
 
-        log.debug("Date data updated for event ID: {}", updatedEventData.getId());
-        return updatedEvent;
+        log.debug("Event data updated for event ID: {}", updatedEventData.getId());
+        return Optional.of(updatedEvent);
     }
 
-    public List<Event> getEventsForSelectedWeek(LocalDate dateOfWeek) {
+    public EventResponse getEventsForSelectedWeek(LocalDate dateOfWeek) {
+
         log.debug("Retrieving events for the selected week starting from: {}", dateOfWeek);
 
         LocalDate firstDayOfSearchedWeek = dateOfWeek.with(DayOfWeek.MONDAY);
@@ -195,7 +202,17 @@ public class EventService {
 
         List<Event> events = eventRepository.findAllByDateRange(firstDayOfSearchedWeek, lastDayOfSearchedWeek);
         log.debug("Retrieved {} events for the selected week.", events.size());
-        return events;
+
+        BigDecimal currentWeekIncome = calculateCurrentIncomeForWeek(events);
+        BigDecimal expectedWeekIncome = calculateExpectedIncomeForWeek(events);
+        BigDecimal currentMonthIncome = calculateCurrentIncomeForMonth(dateOfWeek);
+        BigDecimal expectedMonthIncome = calculateExpectedIncomeForMonth(dateOfWeek);
+
+        log.debug("Calculated incomes - Current Week: {}, Expected Week: {}, Current Month: {}, Expected Month: {}",
+                currentWeekIncome, expectedWeekIncome, currentMonthIncome, expectedMonthIncome);
+
+        return new EventResponse(events, currentWeekIncome, expectedWeekIncome,
+                currentMonthIncome, expectedMonthIncome);
     }
 
     private void createRecurringEventsForWeek(LocalDate targetDate, LocalDate startOfWeek, LocalDate endOfWeek) {
@@ -224,7 +241,7 @@ public class EventService {
         log.debug("Checking if event should be recreated for event ID: {}", event.getId());
 
         LocalDate eventDate = event.getDate();
-        boolean shouldBeRecreated = event.isRepeatable() && eventDate.isBefore(targetDate) && !isDateInRange(targetDate, startOfWeek, endOfWeek);
+        boolean shouldBeRecreated = event.isRepeatable() && eventDate.isBefore(targetDate) && isDateInRange(targetDate, startOfWeek, endOfWeek);
 
         log.debug("Date should{} be recreated for event ID: {}", shouldBeRecreated ? "" : " not", event.getId());
         return shouldBeRecreated;
@@ -233,7 +250,7 @@ public class EventService {
     private boolean isDateInRange(LocalDate date, LocalDate startOfWeek, LocalDate endOfWeek) {
         log.trace("Checking if date {} is in range [{}, {}]", date, startOfWeek, endOfWeek);
 
-        boolean isInRange = !date.isBefore(startOfWeek) && !date.isAfter(endOfWeek);
+        boolean isInRange = date.isAfter(startOfWeek) && date.isBefore(endOfWeek);
 
         log.trace("Date {} is in range [{}, {}]: {}", date, startOfWeek, endOfWeek, isInRange);
         return isInRange;
